@@ -23,30 +23,26 @@ export interface EngineResponse {
   error?: string;
 }
 
-const brokerClient = createClient({ url: env.redisUrl }).on("error", (error) => {
-  console.error("Redis broker client error", error);
-});
+const brokerClient = createClient({ url: env.redisUrl }).on(
+  "error",
+  (error) => {
+    console.error("Redis broker client error", error);
+  },
+);
 
-const responseClient = createClient({ url: env.redisUrl }).on("error", (error) => {
-  console.error("Redis response client error", error);
-});
+const responseClient = createClient({ url: env.redisUrl }).on(
+  "error",
+  (error) => {
+    console.error("Redis response client error", error);
+  },
+);
 
 await Promise.all([brokerClient.connect(), responseClient.connect()]);
 
-// :-)) I added this just to check the flow, remove it when you start
-const DUMMY_SELL_ORDER = {
-  orderId: "dummy-sell-order-1",
-  userId: "dummy-seller",
-  type: "limit",
-  side: "sell",
-  symbol: "BTC",
-  price: 100,
-  qty: 1,
-  filledQty: 0,
-  status: "open",
-};
-
-async function sendResponse(responseQueue: string, response: EngineResponse): Promise<void> {
+async function sendResponse(
+  responseQueue: string,
+  response: EngineResponse,
+): Promise<void> {
   await responseClient.lPush(responseQueue, JSON.stringify(response));
 }
 
@@ -66,28 +62,25 @@ function handleEngineRequest(message: EngineRequest): unknown {
    * - cancel_order
    */
 
-  // just checking the flow, remove this when you start implementing the logic
   if (message.type === "create_order") {
-    return {
-      orderId: crypto.randomUUID(),
-      status: "filled",
-      filledQty: DUMMY_SELL_ORDER.qty,
-      averagePrice: DUMMY_SELL_ORDER.price,
-      fills: [
-        {
-          fillId: crypto.randomUUID(),
-          symbol: DUMMY_SELL_ORDER.symbol,
-          price: DUMMY_SELL_ORDER.price,
-          qty: DUMMY_SELL_ORDER.qty,
-          buyOrderId: "request-buy-order",
-          sellOrderId: DUMMY_SELL_ORDER.orderId,
-        },
-      ],
-      note: "Smoke-test response only. Students must replace this with real matching logic.",
-    };
+    return;
   }
 
-  throw new Error("TODO(student): implement this engine request type");
+  if (message.type === "cancel_order") {
+    return;
+  }
+
+  if (message.type === "get_order") {
+    return;
+  }
+
+  if (message.type === "get_depth") {
+    return;
+  }
+
+  if (message.type === "get_user_balance") {
+    return;
+  }
 }
 
 console.log(`Engine listening on Redis queue: ${env.incomingQueue}`);
