@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createClient } from "redis";
 import { env } from "./utils/env.js";
 import {
+  BALANCES,
   ORDERBOOKS,
   ORDERS,
   type CreateOrderInput,
@@ -317,8 +318,32 @@ function handleEngineRequest(message: EngineRequest): unknown {
       asks,
     };
   }
+
   if (message.type === "get_user_balance") {
-    return;
+    const { userId } = message.payload as unknown as {
+      userId: string;
+    };
+
+    let balances = BALANCES.get(userId);
+
+    // seed new user
+    if (!balances) {
+      balances = {
+        USD: {
+          available: 1_000_000,
+          locked: 0,
+        },
+
+        BTC: {
+          available: 1_000,
+          locked: 0,
+        },
+      };
+
+      BALANCES.set(userId, balances);
+    }
+
+    return balances;
   }
 }
 
