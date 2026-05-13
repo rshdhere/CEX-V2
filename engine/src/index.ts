@@ -240,8 +240,9 @@ function handleEngineRequest(message: EngineRequest): unknown {
   }
 
   if (message.type === "get_order") {
-    const { orderId } = message.payload as unknown as {
+    const { orderId, userId } = message.payload as unknown as {
       orderId: string;
+      userId: string;
     };
 
     const order = ORDERS.get(orderId);
@@ -250,13 +251,72 @@ function handleEngineRequest(message: EngineRequest): unknown {
       throw new Error("order not found");
     }
 
+    // SECURITY CHECK
+    if (order.userId !== userId) {
+      throw new Error("order not found");
+    }
+
     return order;
   }
 
   if (message.type === "get_depth") {
-    return;
-  }
+    const { symbol } = message.payload as unknown as {
+      symbol: string;
+    };
 
+    const book = ORDERBOOKS.get(symbol);
+
+    if (!book) {
+      return {
+        symbol,
+        bids: [],
+        asks: [],
+      };
+    }
+
+    const bids = [...book.bids.entries()]
+      .map(([price, orders]) => {
+        const qty = orders.reduce((sum, order) => {
+          // ignore cancelled/filled
+          if (order.status === "filled" || order.status === "cancelled") {
+            return sum;
+          }
+
+          return sum + (order.qty - order.filledQty);
+        }, 0);
+
+        return {
+          price,
+          qty,
+        };
+      })
+      .filter((level) => level.qty > 0)
+      .sort((a, b) => b.price - a.price);
+
+    const asks = [...book.asks.entries()]
+      .map(([price, orders]) => {
+        const qty = orders.reduce((sum, order) => {
+          if (order.status === "filled" || order.status === "cancelled") {
+            return sum;
+          }
+
+          return sum + (order.qty - order.filledQty);
+        }, 0);
+
+        return {
+          price,
+          qty,
+        };
+      })
+      .filter((level) => level.qty > 0)
+      .sort((a, b) => a.price - b.price);
+
+    return {
+      symbol,
+      bids,
+      asks,
+    };
+  }
   if (message.type === "get_user_balance") {
     return;
   }
