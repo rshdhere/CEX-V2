@@ -240,7 +240,17 @@ function handleEngineRequest(message: EngineRequest): unknown {
   }
 
   if (message.type === "get_order") {
-    return;
+    const { orderId } = message.payload as unknown as {
+      orderId: string;
+    };
+
+    const order = ORDERS.get(orderId);
+
+    if (!order) {
+      throw new Error("order not found");
+    }
+
+    return order;
   }
 
   if (message.type === "get_depth") {
