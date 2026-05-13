@@ -194,8 +194,49 @@ function handleEngineRequest(message: EngineRequest): unknown {
 
     return order;
   }
+
   if (message.type === "cancel_order") {
-    return;
+    const { orderId } = message.payload as unknown as {
+      orderId: string;
+    };
+
+    const order = ORDERS.get(orderId);
+
+    if (!order) {
+      throw new Error("order does not exist");
+    }
+
+    if (order.status === "filled") {
+      throw new Error("filled orders cannot be cancelled");
+    }
+
+    if (order.status === "cancelled") {
+      throw new Error("order already cancelled");
+    }
+
+    const book = ORDERBOOKS.get(order.symbol);
+
+    if (book && order.price !== null) {
+      const sideBook = order.side === "buy" ? book.bids : book.asks;
+
+      const level = sideBook.get(order.price);
+
+      if (level) {
+        const remainingOrders = level.filter(
+          (restingOrder) => restingOrder.orderId !== orderId,
+        );
+
+        if (remainingOrders.length === 0) {
+          sideBook.delete(order.price);
+        } else {
+          sideBook.set(order.price, remainingOrders);
+        }
+      }
+    }
+
+    order.status = "cancelled";
+
+    return order;
   }
 
   if (message.type === "get_order") {
